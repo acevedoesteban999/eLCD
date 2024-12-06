@@ -6,6 +6,6 @@ idf_component_register(
         "include"
     
     REQUIRES
-        driver
+        eI2C
         esp_timer
 )

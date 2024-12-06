@@ -4,11 +4,9 @@ const char*TAG_LCD = "LCD";
 const char*TAG_I2C = "I2C";
 char BufferRtcI2C[25] = "";
 char BufferLCD[3][20] = {"","",""};
-TaskHandle_t task_lcd_handle = NULL;
 
 void lcd_send_cmd(char cmd)
 {
-    esp_err_t err;
     char data_u, data_l;
     uint8_t data_t[4];
     
@@ -25,7 +23,6 @@ void lcd_send_cmd(char cmd)
 
 void lcd_send_data(char data)
 {
-    esp_err_t err;
     char data_u, data_l;
     uint8_t data_t[4];
 
@@ -38,44 +35,6 @@ void lcd_send_data(char data)
     data_t[3] = data_l | 0x09;  // en=0, rs=1
 
     i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4, 1000);
-
-}
-
-void i2c_scan(){
-    i2c_config_t conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = I2C_SDA_PIN,
-        .scl_io_num = I2C_SCL_PIN,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = I2C_FREQ_HZ,
-    };
-    i2c_param_config(I2C_NUM_0, &conf);
-    i2c_driver_install(I2C_NUM_0, conf.mode, 0, 0, 0);
-    
-    int i;
-    esp_err_t err;
-
-    ESP_LOGI(TAG_I2C, "Starting I2C scan...");
-
-    for (i = 0x03; i < 0x78; i++) {
-        // Enviar una petición de escritura (que no envía datos) para verificar si el dispositivo responde
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (i << 1) | I2C_MASTER_WRITE, true);
-        i2c_master_stop(cmd);
-        
-        err = i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(1000));
-        i2c_cmd_link_delete(cmd);
-
-        if (err == ESP_OK) {
-            ESP_LOGI(TAG_I2C, "I2C => 0x%02x", i);
-        } else if (err == ESP_ERR_TIMEOUT) {
-            ESP_LOGE(TAG_I2C, "I2C bus is busy");
-        }
-    }
-
-    ESP_LOGI(TAG_I2C, "I2C scan completed.");
 
 }
 
@@ -127,24 +86,11 @@ void lcd_init_custom_symbols(void) {
     lcd_create_char(2, clear_symbol);       //  2 - Clear
 }
 
-esp_err_t i2c_master_init(void)
+esp_err_t lcd_init(void)
 {
-    i2c_config_t conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = I2C_SDA_PIN,  // Cambié SCL a SDA
-        .scl_io_num = I2C_SCL_PIN,  // Cambié SDA a SCL
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = I2C_FREQ_HZ,  // Usar la frecuencia definida
-    };
-
-    i2c_param_config(I2C_PORT, &conf);
-
-    return i2c_driver_install(I2C_PORT, conf.mode, 0, 0, 0);
-}
-
-void lcd_init(void)
-{
+    esp_err_t err = i2c_master_init(I2C_SDA_PIN,I2C_SCL_PIN,I2C_PORT);
+    if(err != ESP_OK)
+        return err;
     // Inicialización de 4 bits
     usleep(50000);  // Espera por más de 40ms
     lcd_send_cmd(0x30);
@@ -168,6 +114,7 @@ void lcd_init(void)
     lcd_send_cmd(0x0C); // Encender la pantalla
     usleep(2000);
     lcd_init_custom_symbols();
+    return ESP_OK;
 }
 
 void lcd_goto_xy(uint8_t x, uint8_t y) {
@@ -207,81 +154,6 @@ void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
 void lcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
     lcd_goto_xy(x, y);
     lcd_send_data(location);
-}
-
-uint8_t decimal_to_bcd(uint8_t decimal) {
-    return ((decimal / 10) << 4) | (decimal % 10);
-}
-
-
-uint8_t bcd_to_decimal(uint8_t bcd) {
-     return (bcd & 0x0F) + ((bcd >> 4) * 10);
-}
-
-void set_time() {
-    uint8_t data[7];
-
-    // Establecer la hora: segundos, minutos, horas, día de la semana, día del mes, mes, año
-    data[0] = decimal_to_bcd(0);    // segundos 
-    data[1] = decimal_to_bcd(0);    // minutos 
-    data[2] = decimal_to_bcd(21);   // horas (12 en formato 24h)
-    data[3] = decimal_to_bcd(2);    // día de la semana (1 para domingo)
-    data[4] = decimal_to_bcd(21);   // día del mes (1)
-    data[5] = decimal_to_bcd(10);   // mes 
-    data[6] = decimal_to_bcd(24);   // año (20 + val)
-
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, (SLAVE_ADDRESS_RTC << 1) | I2C_MASTER_WRITE, true);
-    i2c_master_write_byte(cmd, 0x00, true); // Apuntar al registro de segundos
-    i2c_master_write(cmd, data, sizeof(data), true); // Escribir los datos
-    i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(1000));
-    i2c_cmd_link_delete(cmd);
-}
-
-
-rtc_data rtc_read(){
-    uint8_t data[7];
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-
-    // Comenzar una transmisión I2C
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, (SLAVE_ADDRESS_RTC << 1) | I2C_MASTER_WRITE, true);
-    i2c_master_write_byte(cmd, 0x00, true);  // Apuntar al registro de segundos
-    i2c_master_start(cmd);  // Repetir el comienzo para leer
-    i2c_master_write_byte(cmd, (SLAVE_ADDRESS_RTC << 1) | I2C_MASTER_READ, true);
-
-    // Leer los 7 bytes que contienen la hora, minuto, segundo, día, fecha, mes y año
-    i2c_master_read(cmd, data, 6, I2C_MASTER_ACK);
-    i2c_master_read_byte(cmd, data + 6, I2C_MASTER_NACK);  // Leer el último byte
-    i2c_master_stop(cmd);
-    i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(1000));
-    i2c_cmd_link_delete(cmd);
-
-    // Convertir los valores de BCD a decimal
-    rtc_data _rtc_data;
-    _rtc_data.seconds = bcd_to_decimal(data[0] & 0x7F);
-    _rtc_data.minutes = bcd_to_decimal(data[1]);
-    _rtc_data.hours = bcd_to_decimal(data[2] & 0x3F);  // Para formato 24 horas
-    _rtc_data.day_of_week = bcd_to_decimal(data[3]);
-    _rtc_data.day_of_month = bcd_to_decimal(data[4]);
-    _rtc_data.month = bcd_to_decimal(data[5] & 0x1F);
-    _rtc_data.year = bcd_to_decimal(data[6]); 
-
-    return _rtc_data;
-}
-
-
-void start_delay_count(_delays * sd){
-    sd->start_time = esp_timer_get_time();
-}
-
-void show_delay(char*LOG,_delays * sd){
-    sd->end_time = esp_timer_get_time(); 
-    uint64_t elapsed_time = sd->end_time - sd->start_time;
-    if(elapsed_time > sd->min)
-        ESP_LOGW(LOG, "%llu us", elapsed_time);
 }
 
 void task_lcd_print_all_lines_task(void * arg){
