@@ -2,8 +2,8 @@
 
 const char*TAG_LCD = "LCD";
 const char*TAG_I2C = "I2C";
-char BufferRtcI2C[25] = "";
-char BufferLCD[3][20] = {"","",""};
+char BufferLCD[MAX_ROW][MAX_COL];
+TaskHandle_t task_lcd_handle = NULL;
 
 void lcd_send_cmd(char cmd)
 {
@@ -149,6 +149,13 @@ void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
 
 
     i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, buffer, index, 1000);
+}
+
+
+void lcd_print_string_center(int y,char * str) {
+    size_t len = strlen(str);
+    int x = (MAX_COL - len)/2;
+    lcd_print_string_at(x,y,str);
 }
 
 void lcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
