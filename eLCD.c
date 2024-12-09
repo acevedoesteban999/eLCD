@@ -2,7 +2,6 @@
 
 const char*TAG_LCD = "LCD";
 const char*TAG_I2C = "I2C";
-char BufferLCD[MAX_ROW][MAX_COL];
 TaskHandle_t task_lcd_handle = NULL;
 
 void lcd_send_cmd(char cmd)
@@ -151,6 +150,10 @@ void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
     i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, buffer, index, 1000);
 }
 
+void lcd_clear() {
+    lcd_send_cmd(LCD_CLEAR_COMMAND);
+    vTaskDelay(pdMS_TO_TICKS(2));
+}
 
 void lcd_print_string_center(int y,char * str) {
     size_t len = strlen(str);
@@ -164,23 +167,20 @@ void lcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
 }
 
 void task_lcd_print_all_lines_task(void * arg){
-    
-    lcd_print_string_at(0,0,BufferLCD[0]); 
-    lcd_print_string_at(0,1,BufferLCD[1]); 
-    lcd_print_string_at(0,2,BufferLCD[2]);
+    char (*buffer)[20] = (char (*)[20])arg;
+
+    lcd_print_string_at(0,0,buffer[0]); 
+    lcd_print_string_at(0,1,buffer[1]); 
+    lcd_print_string_at(0,2,buffer[2]);
     vTaskDelete(NULL);
 }
 
-void lcd_print_all_lines(float frecuency,float average_threshold,float drift){
+
+void lcd_print_lines_xtask(char*buffer,size_t size){
     if(task_lcd_handle != NULL)
         while (eTaskGetState(task_lcd_handle) == eRunning)
             vTaskDelay(pdMS_TO_TICKS(1));
     
-    sprintf(BufferLCD[0], "F: %.3f~%.3f", frecuency/2,frecuency);                                   //frecuency
-    sprintf(BufferLCD[1], "P:      %.0f", average_threshold);                                       //average_threshold       
-    sprintf(BufferLCD[2], "D:%s%.4f~%s%.4f",drift>=0?" ":"", drift/2,drift>=0?" ":"", drift);       //drift
-
-
-    xTaskCreatePinnedToCore(task_lcd_print_all_lines_task, "task_LCD", 5000, NULL, 20, &task_lcd_handle,1);
+    xTaskCreatePinnedToCore(task_lcd_print_all_lines_task, "xtask_lines", 5000, buffer, 20, &task_lcd_handle,LCD_CORE);
     
 }
