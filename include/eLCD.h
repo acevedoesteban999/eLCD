@@ -14,10 +14,24 @@
 #define MAX_COL 20 
 #define LCD_CORE 1
 #define LCD_CLEAR_COMMAND 0x01
+#define MAX_DRAW_BUFFER 10
 
 extern const char*TAG_LCD;
 extern const char*TAG_I2C;
 
+enum DRAW_TYPE{
+    PRINT_STRING_AT,
+    PRINT_STRING_CENTER,
+    DRAW_SYMBOL,
+};
+
+typedef struct {
+    enum DRAW_TYPE type;
+    char *string;
+    uint8_t x;
+    uint8_t y;
+    uint8_t location;
+} draw_handler;
 
 
 // Funciones del LCD
@@ -30,7 +44,8 @@ void lcd_clear();
 void lcd_create_char(uint8_t location, uint8_t charmap[]);
 void lcd_print_string_center(int y, char *str);
 void lcd_draw_symbol(uint8_t x, uint8_t y, uint8_t location);
-void lcd_print_lines_xtask(char *buffer, size_t size);
+void lcd_add_draw_to_buffer(draw_handler draw);
+void lcd_trigger_draw();
 uint8_t decimal_to_bcd(uint8_t decimal);
 void lcd_init_custom_symbols(void);
 uint8_t bcd_to_decimal(uint8_t bcd);
