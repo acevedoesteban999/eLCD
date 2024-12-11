@@ -14,7 +14,7 @@
 #define MAX_COL 20 
 #define LCD_CORE 1
 #define LCD_CLEAR_COMMAND 0x01
-#define MAX_DRAW_BUFFER 10
+#define MAX_DRAW_BUFFER 25
 
 extern const char*TAG_LCD;
 extern const char*TAG_I2C;

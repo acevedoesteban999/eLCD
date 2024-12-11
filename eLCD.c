@@ -211,7 +211,7 @@ void lcd_trigger_draw(){
     if(draw_counter != 0){
         if(task_draw_handle != NULL)
             while (eTaskGetState(task_draw_handle) == eRunning)
-                vTaskDelay(pdMS_TO_TICKS(1));
+                vTaskDelay(1);
         
         for(size_t i =0;i<draw_counter;i++){
             DRAW_BUFFER_copy[i] = DRAW_BUFFER[i];
