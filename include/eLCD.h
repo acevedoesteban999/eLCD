@@ -25,9 +25,18 @@ enum DRAW_TYPE{
     DRAW_SYMBOL,
 };
 
+/*
+enum DRAW_TYPE type;
+char *str_ptr ;
+char str_buff[20] ;
+uint8_t x;
+uint8_t y;
+uint8_t location;
+*/
 typedef struct {
     enum DRAW_TYPE type;
-    char *string;
+    char *str_ptr ;
+    char str_buff[20] ;
     uint8_t x;
     uint8_t y;
     uint8_t location;

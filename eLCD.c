@@ -172,44 +172,10 @@ void lcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
     lcd_send_data(location);
 }
 
-// void _task_lcd_draw_symbol(void* arg) {
-//     lcd_draw_symbol(draw_symbol_h.x,draw_symbol_h.y,draw_symbol_h.location);
-// }
-
-// void _task_lcd_print_all_lines(void * arg){
-//     char (*buffer)[20] = (char (*)[20])arg;
-
-//     lcd_print_string_at(0,0,buffer[0]); 
-//     lcd_print_string_at(0,1,buffer[1]); 
-//     lcd_print_string_at(0,2,buffer[2]);
-//     vTaskDelete(NULL);
-// }
-
-// void lcd_draw_symbol_xtask(uint8_t x,uint8_t y, uint8_t location) {
-//     if(task_draw_symbol_handle != NULL)
-//         while (eTaskGetState(task_draw_symbol_handle) == eRunning)
-//             vTaskDelay(pdMS_TO_TICKS(1));
-//     draw_symbol_h.x = x;
-//     draw_symbol_h.y = y;
-//     draw_symbol_h.location = location;
-    
-//     xTaskCreatePinnedToCore(_task_lcd_draw_symbol, "xtask_draw_symbol", 5000, NULL, 20, &task_draw_symbol_handle,LCD_CORE);
-    
-// }
-
-// void lcd_print_lines_xtask(char*buffer,size_t size){
-//     if(task_draw_handle != NULL)
-//         while (eTaskGetState(task_draw_handle) == eRunning)
-//             vTaskDelay(pdMS_TO_TICKS(1));
-    
-//     xTaskCreatePinnedToCore(_task_lcd_print_all_lines, "xtask_lines", 5000, buffer, 20, &task_draw_handle,LCD_CORE);
-    
-// }
-
 void lcd_add_draw_to_buffer(draw_handler draw){
     if(draw_counter < MAX_DRAW_BUFFER){
         DRAW_BUFFER[draw_counter] = draw;
-        strcpy(DRAW_BUFFER[draw_counter].string,draw.string);
+        strcpy(DRAW_BUFFER[draw_counter].str_buff, (draw.str_ptr != NULL ? draw.str_ptr : draw.str_buff) );
         draw_counter++;
     }else{
         lcd_trigger_draw();
@@ -217,16 +183,17 @@ void lcd_add_draw_to_buffer(draw_handler draw){
     }
 }
 
+
 void _task_trigger_draw(void*arg){
     for(size_t i =0;i<draw_counter_cpy;i++){
         switch (DRAW_BUFFER_copy[i].type)
         {
         case  PRINT_STRING_AT:
-            lcd_print_string_at(DRAW_BUFFER_copy[i].x,DRAW_BUFFER_copy[i].y,DRAW_BUFFER_copy[i].string);
+            lcd_print_string_at(DRAW_BUFFER_copy[i].x,DRAW_BUFFER_copy[i].y,DRAW_BUFFER_copy[i].str_buff);
             break;
         
         case  PRINT_STRING_CENTER:
-            lcd_print_string_center(DRAW_BUFFER_copy[i].y,DRAW_BUFFER_copy[i].string);
+            lcd_print_string_center(DRAW_BUFFER_copy[i].y,DRAW_BUFFER_copy[i].str_buff);
             break;
         
         case  DRAW_SYMBOL:
@@ -248,7 +215,7 @@ void lcd_trigger_draw(){
         
         for(size_t i =0;i<draw_counter;i++){
             DRAW_BUFFER_copy[i] = DRAW_BUFFER[i];
-            strcpy(DRAW_BUFFER_copy[i].string, DRAW_BUFFER[i].string);
+            strcpy(DRAW_BUFFER_copy[i].str_buff, DRAW_BUFFER[i].str_buff);
         }
         draw_counter_cpy = draw_counter;
         draw_counter = 0;
