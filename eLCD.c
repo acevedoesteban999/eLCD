@@ -122,6 +122,16 @@ esp_err_t lcd_init(void)
     return ESP_OK;
 }
 
+void lcd_clear_all(){
+    char clear[MAX_COL + 1];
+    for(unsigned i =0 ; i< MAX_COL;i++)
+        clear[i] = ' ';
+    clear[MAX_COL] = '\0';
+    
+    for(unsigned i =0 ; i< MAX_ROW;i++)
+        lcd_print_string_at(0,i,clear);
+}
+
 void lcd_goto_xy(uint8_t x, uint8_t y) {
     uint8_t address;
     switch (y) {
@@ -156,10 +166,10 @@ void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
     i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, buffer, index, 1000);
 }
 
-void lcd_clear() {
-    lcd_send_cmd(LCD_CLEAR_COMMAND);
-    vTaskDelay(pdMS_TO_TICKS(2));
-}
+// void lcd_clear() {
+//     lcd_send_cmd(LCD_CLEAR_COMMAND);
+//     vTaskDelay(pdMS_TO_TICKS(2));
+// }
 
 void lcd_print_string_center(int y,char * str) {
     size_t len = strlen(str);

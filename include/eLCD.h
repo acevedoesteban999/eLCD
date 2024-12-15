@@ -47,9 +47,9 @@ typedef struct {
 void lcd_send_cmd(char cmd);
 void lcd_send_data(char data);
 esp_err_t lcd_init(void);
+void lcd_clear_all();
 void lcd_goto_xy(uint8_t x, uint8_t y);
 void lcd_print_string_at(uint8_t x, uint8_t y, char *str);
-void lcd_clear();
 void lcd_create_char(uint8_t location, uint8_t charmap[]);
 void lcd_print_string_center(int y, char *str);
 void lcd_draw_symbol(uint8_t x, uint8_t y, uint8_t location);
