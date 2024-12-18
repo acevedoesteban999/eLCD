@@ -181,6 +181,7 @@ void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
 // }
 
 void lcd_print_string_center(int y,char * str) {
+    lcd_clear_row(y);
     size_t len = strlen(str);
     int x = (MAX_COL - len)/2;
     lcd_print_string_at(x,y,str);
