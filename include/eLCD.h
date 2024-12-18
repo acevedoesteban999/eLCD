@@ -6,8 +6,6 @@
 #include "eI2C.h"
 
 #define I2C_PORT I2C_NUM_0              
-#define I2C_SCL_PIN 26                 
-#define I2C_SDA_PIN 25                  
 #define I2C_PORT I2C_NUM_0                 
 #define I2C_FREQ_HZ 400000              
 #define SLAVE_ADDRESS_LCD 0x27        
