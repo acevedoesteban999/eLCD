@@ -2,6 +2,8 @@
 
 const char*TAG_LCD = "LCD";
 const char*TAG_I2C = "I2C";
+uint8_t I2C_SCL_PIN = 21;                 
+uint8_t I2C_SDA_PIN = 22;
 TaskHandle_t task_draw_handle = NULL;
 
 draw_handler DRAW_BUFFER[MAX_DRAW_BUFFER];
@@ -120,6 +122,11 @@ esp_err_t lcd_init(void)
     usleep(2000);
     lcd_init_custom_symbols();
     return ESP_OK;
+}
+
+void lcd_set_pins(uint8_t SCL,uint8_t SDA){
+    I2C_SCL_PIN = SCL;
+    I2C_SDA_PIN = SDA;
 }
 
 void lcd_clear_all(){
