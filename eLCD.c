@@ -132,6 +132,15 @@ void lcd_clear_all(){
         lcd_print_string_at(0,i,clear);
 }
 
+void lcd_clear_row(uint8_t y){
+    char clear[MAX_COL + 1];
+    for(unsigned i =0 ; i< MAX_COL;i++)
+        clear[i] = ' ';
+    clear[MAX_COL] = '\0';
+    
+    lcd_print_string_at(0,y,clear);
+}
+
 void lcd_goto_xy(uint8_t x, uint8_t y) {
     uint8_t address;
     switch (y) {
