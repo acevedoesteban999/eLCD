@@ -2,6 +2,8 @@
 
 const char*TAG_LCD = "LCD";
 const char*TAG_I2C = "I2C";
+int I2C_SCL_PIN = 21;                 
+int I2C_SDA_PIN = 22;
 TaskHandle_t task_draw_handle = NULL;
 
 draw_handler DRAW_BUFFER[MAX_DRAW_BUFFER];
@@ -122,6 +124,11 @@ esp_err_t lcd_init(void)
     return ESP_OK;
 }
 
+void lcd_set_pins(int SCL,int SDA){
+    I2C_SCL_PIN = SCL;
+    I2C_SDA_PIN = SDA;
+}
+
 void lcd_clear_all(){
     char clear[MAX_COL + 1];
     for(unsigned i =0 ; i< MAX_COL;i++)
@@ -130,6 +137,15 @@ void lcd_clear_all(){
     
     for(unsigned i =0 ; i< MAX_ROW;i++)
         lcd_print_string_at(0,i,clear);
+}
+
+void lcd_clear_row(uint8_t y){
+    char clear[MAX_COL + 1];
+    for(unsigned i =0 ; i< MAX_COL;i++)
+        clear[i] = ' ';
+    clear[MAX_COL] = '\0';
+    
+    lcd_print_string_at(0,y,clear);
 }
 
 void lcd_goto_xy(uint8_t x, uint8_t y) {
@@ -172,6 +188,7 @@ void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
 // }
 
 void lcd_print_string_center(int y,char * str) {
+    lcd_clear_row(y);
     size_t len = strlen(str);
     int x = (MAX_COL - len)/2;
     lcd_print_string_at(x,y,str);
