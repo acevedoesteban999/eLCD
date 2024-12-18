@@ -46,6 +46,7 @@ typedef struct {
 void lcd_send_cmd(char cmd);
 void lcd_send_data(char data);
 esp_err_t lcd_init(void);
+void lcd_set_pins(int SCL, int SDA);
 void lcd_clear_all();
 void lcd_clear_row(uint8_t y);
 void lcd_goto_xy(uint8_t x, uint8_t y);
