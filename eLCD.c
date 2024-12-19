@@ -226,7 +226,10 @@ void _task_trigger_draw(void*arg){
         case  DRAW_SYMBOL:
             lcd_draw_symbol(DRAW_BUFFER_copy[i].x,DRAW_BUFFER_copy[i].y,DRAW_BUFFER_copy[i].location);
             break;
-    
+            
+        case CLEAR_ROW:
+            lcd_clear_row(DRAW_BUFFER_copy[i].y);
+            break;
         default:
             break;
         }

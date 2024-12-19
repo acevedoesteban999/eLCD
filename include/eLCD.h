@@ -22,6 +22,7 @@ enum DRAW_TYPE{
     PRINT_STRING_AT,
     PRINT_STRING_CENTER,
     DRAW_SYMBOL,
+    CLEAR_ROW,
 };
 
 /*
