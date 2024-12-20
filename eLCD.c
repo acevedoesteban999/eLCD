@@ -12,8 +12,7 @@ size_t draw_counter=0;
 draw_handler DRAW_BUFFER_copy[MAX_DRAW_BUFFER];
 size_t draw_counter_cpy=0;
 
-void lcd_send_cmd(char cmd)
-{
+void lcd_send_cmd(char cmd) {
     char data_u, data_l;
     uint8_t data_t[4];
     
@@ -25,11 +24,16 @@ void lcd_send_cmd(char cmd)
     data_t[2] = data_l | 0x0C;  // en=1, rs=0
     data_t[3] = data_l | 0x08;  // en=0, rs=0
 
-    i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4, 1000);
+    esp_err_t err;
+    for (int i = 0; i < 3; i++) { // Intentar hasta 3 veces
+        err = i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4, 1000);
+        if (err == ESP_OK) break;
+        vTaskDelay(pdMS_TO_TICKS(10)); // Esperar 10ms antes de reintentar
+    }
+    vTaskDelay(pdMS_TO_TICKS(2)); // Añadir un pequeño retardo después de cada comando
 }
 
-void lcd_send_data(char data)
-{
+void lcd_send_data(char data) {
     char data_u, data_l;
     uint8_t data_t[4];
 
@@ -41,8 +45,13 @@ void lcd_send_data(char data)
     data_t[2] = data_l | 0x0D;  // en=1, rs=1
     data_t[3] = data_l | 0x09;  // en=0, rs=1
 
-    i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4, 1000);
-
+    esp_err_t err;
+    for (int i = 0; i < 3; i++) { // Intentar hasta 3 veces
+        err = i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4, 1000);
+        if (err == ESP_OK) break;
+        vTaskDelay(pdMS_TO_TICKS(10)); // Esperar 10ms antes de reintentar
+    }
+    vTaskDelay(pdMS_TO_TICKS(2)); // Añadir un pequeño retardo después de cada comando
 }
 
 void lcd_create_char(uint8_t location, uint8_t charmap[]) {
@@ -75,22 +84,8 @@ void lcd_init_custom_symbols(void) {
         0b00000  
     };
 
-    uint8_t clear_symbol[8] = {
-        0b00000,
-        0b00000,
-        0b00000,
-        0b00000,
-        0b00000,
-        0b00000,
-        0b00000,
-        0b00000
-    };
-
-    
-
     lcd_create_char(0, warning_symbol);     // 0 - Warning
     lcd_create_char(1, alarm_symbol);       //  1 - Danger
-    lcd_create_char(2, clear_symbol);       //  2 - Clear
 }
 
 esp_err_t lcd_init(void)
@@ -149,6 +144,9 @@ void lcd_clear_row(uint8_t y){
 }
 
 void lcd_goto_xy(uint8_t x, uint8_t y) {
+    if (x >= MAX_COL) x = MAX_COL - 1; // Limitar x al máximo de columnas
+    if (y >= MAX_ROW) y = MAX_ROW - 1; // Limitar y al máximo de filas
+
     uint8_t address;
     switch (y) {
         case 0: address = 0x00 + x; break; // Fila 1
@@ -161,13 +159,19 @@ void lcd_goto_xy(uint8_t x, uint8_t y) {
 }
 
 void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
-    lcd_goto_xy(x, y); // Mueve el cursor a la posición deseada
+    lcd_goto_xy(x, y); 
 
-    uint8_t buffer[100]; // Ajusta el tamaño del buffer según sea necesario
+    uint8_t buffer[100]; 
     int index = 0;
 
+    size_t len = strlen(str);
+
+    if (x + len > MAX_COL) {
+        len = MAX_COL - x;
+    }
+
     // Convertir cada carácter de la cadena en las secuencias de datos necesarias
-    for(unsigned i = 0; i < strlen(str); i++){
+    for (unsigned i = 0; i < len; i++) {
         char data_u = (str[i] & 0xf0);
         char data_l = ((str[i] << 4) & 0xf0);
 
@@ -178,14 +182,14 @@ void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
         buffer[index++] = data_l | 0x09;  // en=0, rs=1
     }
 
-
-    i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, buffer, index, 1000);
+    esp_err_t err;
+    for (int i = 0; i < 3; i++) { // Intentar hasta 3 veces
+        err = i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, buffer, index, 1000);
+        if (err == ESP_OK) break;
+        vTaskDelay(pdMS_TO_TICKS(10)); // Esperar 10ms antes de reintentar
+    }
+    vTaskDelay(pdMS_TO_TICKS(2)); // Añadir un pequeño retardo después de cada comando
 }
-
-// void lcd_clear() {
-//     lcd_send_cmd(LCD_CLEAR_COMMAND);
-//     vTaskDelay(pdMS_TO_TICKS(2));
-// }
 
 void lcd_print_string_center(int y,char * str) {
     lcd_clear_row(y);
@@ -199,57 +203,67 @@ void lcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
     lcd_send_data(location);
 }
 
-void lcd_add_draw_to_buffer(draw_handler draw){
-    if(draw_counter < MAX_DRAW_BUFFER){
+bool is_task_running(TaskHandle_t task_handle) {
+    return (task_handle != NULL && eTaskGetState(task_handle) == eRunning);
+}
+
+void lcd_add_draw_to_buffer(draw_handler draw) {
+    if (draw_counter < MAX_DRAW_BUFFER) {
         DRAW_BUFFER[draw_counter] = draw;
-        strcpy(DRAW_BUFFER[draw_counter].str_buff, (draw.str_ptr != NULL ? draw.str_ptr : draw.str_buff) );
+        strcpy(DRAW_BUFFER[draw_counter].str_buff, (draw.str_ptr != NULL ? draw.str_ptr : draw.str_buff));
         draw_counter++;
-    }else{
+    } else {
         lcd_trigger_draw();
         lcd_add_draw_to_buffer(draw);
     }
 }
 
+void lcd_clear_at(uint8_t x , uint8_t y , uint8_t len){
+    char clear[len + 1];
+    for(unsigned i =0 ; i< len;i++)
+        clear[i] = ' ';
+    clear[len] = '\0';
+    lcd_print_string_at(x,y,clear);
+}
 
-void _task_trigger_draw(void*arg){
-    for(size_t i =0;i<draw_counter_cpy;i++){
-        switch (DRAW_BUFFER_copy[i].type)
-        {
-        case  PRINT_STRING_AT:
-            lcd_print_string_at(DRAW_BUFFER_copy[i].x,DRAW_BUFFER_copy[i].y,DRAW_BUFFER_copy[i].str_buff);
-            break;
-        
-        case  PRINT_STRING_CENTER:
-            lcd_print_string_center(DRAW_BUFFER_copy[i].y,DRAW_BUFFER_copy[i].str_buff);
-            break;
-        
-        case  DRAW_SYMBOL:
-            lcd_draw_symbol(DRAW_BUFFER_copy[i].x,DRAW_BUFFER_copy[i].y,DRAW_BUFFER_copy[i].location);
-            break;
-            
-        case CLEAR_ROW:
-            lcd_clear_row(DRAW_BUFFER_copy[i].y);
-            break;
-        default:
-            break;
+void _task_trigger_draw(void* arg) {
+    for (size_t i = 0; i < draw_counter_cpy; i++) {
+        switch (DRAW_BUFFER_copy[i].type) {
+            case PRINT_STRING_AT:
+                lcd_print_string_at(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].str_buff);
+                break;
+            case PRINT_STRING_CENTER:
+                lcd_print_string_center(DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].str_buff);
+                break;
+            case DRAW_SYMBOL:
+                lcd_draw_symbol(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].location);
+                break;
+            case CLEAR_ROW:
+                lcd_clear_row(DRAW_BUFFER_copy[i].y);
+                break;
+            case CLEAR_AT:
+                lcd_clear_at(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].location);
+                break;
+            default:
+                break;
         }
     }
     vTaskDelete(NULL);
 }
 
-void lcd_trigger_draw(){
-    if(draw_counter != 0){
-        if(task_draw_handle != NULL)
-            while (eTaskGetState(task_draw_handle) == eRunning)
+void lcd_trigger_draw() {
+    if (draw_counter != 0) {
+        if (is_task_running(task_draw_handle)) {
+            while (is_task_running(task_draw_handle)) {
                 vTaskDelay(1);
-        
-        for(size_t i =0;i<draw_counter;i++){
+            }
+        }
+        for (size_t i = 0; i < draw_counter; i++) {
             DRAW_BUFFER_copy[i] = DRAW_BUFFER[i];
             strcpy(DRAW_BUFFER_copy[i].str_buff, DRAW_BUFFER[i].str_buff);
         }
         draw_counter_cpy = draw_counter;
         draw_counter = 0;
-        xTaskCreatePinnedToCore(_task_trigger_draw, "xtask_lines", 5000, NULL, 20, &task_draw_handle,LCD_CORE);
+        xTaskCreatePinnedToCore(_task_trigger_draw, "xtask_lines", 5000, NULL, 20, &task_draw_handle, LCD_CORE);
     }
-    
 }
