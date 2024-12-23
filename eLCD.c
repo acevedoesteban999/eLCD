@@ -12,7 +12,7 @@ size_t draw_counter=0;
 draw_handler DRAW_BUFFER_copy[MAX_DRAW_BUFFER];
 size_t draw_counter_cpy=0;
 
-void lcd_send_cmd(char cmd) {
+void elcd_send_cmd(char cmd) {
     char data_u, data_l;
     uint8_t data_t[4];
     
@@ -24,16 +24,10 @@ void lcd_send_cmd(char cmd) {
     data_t[2] = data_l | 0x0C;  // en=1, rs=0
     data_t[3] = data_l | 0x08;  // en=0, rs=0
 
-    esp_err_t err;
-    for (int i = 0; i < 3; i++) { // Intentar hasta 3 veces
-        err = i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4, 1000);
-        if (err == ESP_OK) break;
-        vTaskDelay(pdMS_TO_TICKS(10)); // Esperar 10ms antes de reintentar
-    }
-    vTaskDelay(pdMS_TO_TICKS(2)); // Añadir un pequeño retardo después de cada comando
+    ei2c_write(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4);
 }
 
-void lcd_send_data(char data) {
+void elcd_send_data(char data) {
     char data_u, data_l;
     uint8_t data_t[4];
 
@@ -45,24 +39,18 @@ void lcd_send_data(char data) {
     data_t[2] = data_l | 0x0D;  // en=1, rs=1
     data_t[3] = data_l | 0x09;  // en=0, rs=1
 
-    esp_err_t err;
-    for (int i = 0; i < 3; i++) { // Intentar hasta 3 veces
-        err = i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4, 1000);
-        if (err == ESP_OK) break;
-        vTaskDelay(pdMS_TO_TICKS(10)); // Esperar 10ms antes de reintentar
-    }
-    vTaskDelay(pdMS_TO_TICKS(2)); // Añadir un pequeño retardo después de cada comando
+    ei2c_write(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4);
 }
 
-void lcd_create_char(uint8_t location, uint8_t charmap[]) {
+void elcd_create_char(uint8_t location, uint8_t charmap[]) {
     location &= 0x7; // Solo se pueden almacenar hasta 8 caracteres (0-7)
-    lcd_send_cmd(0x40 | (location << 3)); // Comando para cargar a CGRAM
+    elcd_send_cmd(0x40 | (location << 3)); // Comando para cargar a CGRAM
     for (int i = 0; i < 8; i++) {
-        lcd_send_data(charmap[i]); // Escribir cada fila del símbolo
+        elcd_send_data(charmap[i]); // Escribir cada fila del símbolo
     }
 }
 
-void lcd_init_custom_symbols(void) {
+void eelcd_init_custom_symbols(void) {
     uint8_t warning_symbol[8] = {
         0b00100, 
         0b00100, 
@@ -84,66 +72,66 @@ void lcd_init_custom_symbols(void) {
         0b00000  
     };
 
-    lcd_create_char(0, warning_symbol);     // 0 - Warning
-    lcd_create_char(1, alarm_symbol);       //  1 - Danger
+    elcd_create_char(0, warning_symbol);     // 0 - Warning
+    elcd_create_char(1, alarm_symbol);       //  1 - Danger
 }
 
-esp_err_t lcd_init(void)
+esp_err_t elcd_init(void)
 {
-    esp_err_t err = i2c_master_init(I2C_SDA_PIN,I2C_SCL_PIN,I2C_PORT);
+    esp_err_t err = ei2c_master_init(I2C_SDA_PIN,I2C_SCL_PIN,I2C_PORT);
     if(err != ESP_OK)
         return err;
     // Inicialización de 4 bits
     usleep(50000);  // Espera por más de 40ms
-    lcd_send_cmd(0x30);
+    elcd_send_cmd(0x30);
     usleep(4500);   // Espera por más de 4.1ms
-    lcd_send_cmd(0x30);
+    elcd_send_cmd(0x30);
     usleep(200);    // Espera por más de 100us
-    lcd_send_cmd(0x30);
+    elcd_send_cmd(0x30);
     usleep(200);
-    lcd_send_cmd(0x20);  // Modo de 4 bits
+    elcd_send_cmd(0x20);  // Modo de 4 bits
     usleep(200);
 
     // Inicialización de la pantalla
-    lcd_send_cmd(0x28); // Configuración de función
+    elcd_send_cmd(0x28); // Configuración de función
     usleep(1000);
-    lcd_send_cmd(0x08); // Apagar la pantalla
+    elcd_send_cmd(0x08); // Apagar la pantalla
     usleep(1000);
-    lcd_send_cmd(0x01); // Limpiar la pantalla
+    elcd_send_cmd(0x01); // Limpiar la pantalla
     usleep(2000); // Espera por más de 1.53ms
-    lcd_send_cmd(0x06); // Configuración de modo de entrada
+    elcd_send_cmd(0x06); // Configuración de modo de entrada
     usleep(1000);
-    lcd_send_cmd(0x0C); // Encender la pantalla
+    elcd_send_cmd(0x0C); // Encender la pantalla
     usleep(2000);
-    lcd_init_custom_symbols();
+    eelcd_init_custom_symbols();
     return ESP_OK;
 }
 
-void lcd_set_pins(int SCL,int SDA){
+void elcd_set_pins(int SCL,int SDA){
     I2C_SCL_PIN = SCL;
     I2C_SDA_PIN = SDA;
 }
 
-void lcd_clear_all(){
+void elcd_clear_all(){
     char clear[MAX_COL + 1];
     for(unsigned i =0 ; i< MAX_COL;i++)
         clear[i] = ' ';
     clear[MAX_COL] = '\0';
     
     for(unsigned i =0 ; i< MAX_ROW;i++)
-        lcd_print_string_at(0,i,clear);
+        elcd_print_string_at(0,i,clear);
 }
 
-void lcd_clear_row(uint8_t y){
+void elcd_clear_row(uint8_t y){
     char clear[MAX_COL + 1];
     for(unsigned i =0 ; i< MAX_COL;i++)
         clear[i] = ' ';
     clear[MAX_COL] = '\0';
     
-    lcd_print_string_at(0,y,clear);
+    elcd_print_string_at(0,y,clear);
 }
 
-void lcd_goto_xy(uint8_t x, uint8_t y) {
+void elcd_goto_xy(uint8_t x, uint8_t y) {
     if (x >= MAX_COL) x = MAX_COL - 1; // Limitar x al máximo de columnas
     if (y >= MAX_ROW) y = MAX_ROW - 1; // Limitar y al máximo de filas
 
@@ -155,11 +143,11 @@ void lcd_goto_xy(uint8_t x, uint8_t y) {
         case 3: address = 0x54 + x; break; // Fila 4
         default: return; // Fila no válida
     }
-    lcd_send_cmd(0x80 | address); // Comando para mover el cursor
+    elcd_send_cmd(0x80 | address); // Comando para mover el cursor
 }
 
-void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
-    lcd_goto_xy(x, y); 
+void elcd_print_string_at(uint8_t x, uint8_t y, char * str) {
+    elcd_goto_xy(x, y); 
 
     uint8_t buffer[100]; 
     int index = 0;
@@ -170,79 +158,70 @@ void lcd_print_string_at(uint8_t x, uint8_t y, char * str) {
         len = MAX_COL - x;
     }
 
-    // Convertir cada carácter de la cadena en las secuencias de datos necesarias
     for (unsigned i = 0; i < len; i++) {
         char data_u = (str[i] & 0xf0);
         char data_l = ((str[i] << 4) & 0xf0);
 
-        // Añadir las secuencias de 4 bytes por cada carácter
         buffer[index++] = data_u | 0x0D;  // en=1, rs=1
         buffer[index++] = data_u | 0x09;  // en=0, rs=1
         buffer[index++] = data_l | 0x0D;  // en=1, rs=1
         buffer[index++] = data_l | 0x09;  // en=0, rs=1
     }
-
-    esp_err_t err;
-    for (int i = 0; i < 3; i++) { // Intentar hasta 3 veces
-        err = i2c_master_write_to_device(I2C_PORT, SLAVE_ADDRESS_LCD, buffer, index, 1000);
-        if (err == ESP_OK) break;
-        vTaskDelay(pdMS_TO_TICKS(10)); // Esperar 10ms antes de reintentar
-    }
-    vTaskDelay(pdMS_TO_TICKS(2)); // Añadir un pequeño retardo después de cada comando
+    ei2c_write(I2C_PORT, SLAVE_ADDRESS_LCD, buffer, index);
 }
 
-void lcd_print_string_center(int y,char * str) {
-    lcd_clear_row(y);
+void elcd_print_string_center(int y,char * str) {
+    elcd_clear_row(y);
     size_t len = strlen(str);
     int x = (MAX_COL - len)/2;
-    lcd_print_string_at(x,y,str);
+    elcd_print_string_at(x,y,str);
 }
 
-void lcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
-    lcd_goto_xy(x, y);
-    lcd_send_data(location);
+void elcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
+    elcd_goto_xy(x, y);
+    elcd_send_data(location);
 }
 
-bool is_task_running(TaskHandle_t task_handle) {
+bool elcd_is_task_running(TaskHandle_t task_handle) {
     return (task_handle != NULL && eTaskGetState(task_handle) == eRunning);
 }
 
-void lcd_add_draw_to_buffer(draw_handler draw) {
+void elcd_add_draw_to_buffer(draw_handler draw) {
     if (draw_counter < MAX_DRAW_BUFFER) {
         DRAW_BUFFER[draw_counter] = draw;
         strcpy(DRAW_BUFFER[draw_counter].str_buff, (draw.str_ptr != NULL ? draw.str_ptr : draw.str_buff));
         draw_counter++;
     } else {
-        lcd_trigger_draw();
-        lcd_add_draw_to_buffer(draw);
+        elcd_trigger_draw();
+        elcd_add_draw_to_buffer(draw);
     }
 }
 
-void lcd_clear_at(uint8_t x , uint8_t y , uint8_t len){
+void elcd_clear_at(uint8_t x , uint8_t y , uint8_t len){
     char clear[len + 1];
     for(unsigned i =0 ; i< len;i++)
         clear[i] = ' ';
     clear[len] = '\0';
-    lcd_print_string_at(x,y,clear);
+    elcd_print_string_at(x,y,clear);
 }
 
 void _task_trigger_draw(void* arg) {
     for (size_t i = 0; i < draw_counter_cpy; i++) {
         switch (DRAW_BUFFER_copy[i].type) {
             case PRINT_STRING_AT:
-                lcd_print_string_at(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].str_buff);
+                elcd_print_string_at(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].str_buff);
                 break;
             case PRINT_STRING_CENTER:
-                lcd_print_string_center(DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].str_buff);
+                elcd_print_string_center(DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].str_buff);
                 break;
             case DRAW_SYMBOL:
-                lcd_draw_symbol(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].location);
+                elcd_draw_symbol(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].location);
                 break;
             case CLEAR_ROW:
-                lcd_clear_row(DRAW_BUFFER_copy[i].y);
+                elcd_clear_row(DRAW_BUFFER_copy[i].y);
                 break;
             case CLEAR_AT:
-                lcd_clear_at(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].location);
+                elcd_clear_at(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].location);
                 break;
             default:
                 break;
@@ -251,10 +230,10 @@ void _task_trigger_draw(void* arg) {
     vTaskDelete(NULL);
 }
 
-void lcd_trigger_draw() {
+void elcd_trigger_draw() {
     if (draw_counter != 0) {
-        if (is_task_running(task_draw_handle)) {
-            while (is_task_running(task_draw_handle)) {
+        if (elcd_is_task_running(task_draw_handle)) {
+            while (elcd_is_task_running(task_draw_handle)) {
                 vTaskDelay(1);
             }
         }
