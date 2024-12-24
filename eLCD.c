@@ -42,38 +42,12 @@ void elcd_send_data(char data) {
     ei2c_write(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4);
 }
 
-void elcd_create_char(uint8_t location, uint8_t charmap[]) {
-    location &= 0x7; // Solo se pueden almacenar hasta 8 caracteres (0-7)
-    elcd_send_cmd(0x40 | (location << 3)); // Comando para cargar a CGRAM
+void elcd_create_symbol(uint8_t location, uint8_t charmap[8]) {
+    location &= 0x7;                        // Solo se pueden almacenar hasta 8 caracteres (0-7)
+    elcd_send_cmd(0x40 | (location << 3));  // Comando para cargar a CGRAM
     for (int i = 0; i < 8; i++) {
-        elcd_send_data(charmap[i]); // Escribir cada fila del símbolo
+        elcd_send_data(charmap[i]);         // Escribir cada fila del símbolo
     }
-}
-
-void eelcd_init_custom_symbols(void) {
-    uint8_t warning_symbol[8] = {
-        0b00100, 
-        0b00100, 
-        0b00100, 
-        0b00100, 
-        0b00100, 
-        0b00100,
-        0b00000, 
-        0b00100  
-    };
-    uint8_t alarm_symbol[8] = {
-        0b10001, 
-        0b10001, 
-        0b01010, 
-        0b00100, 
-        0b01010, 
-        0b10001,
-        0b10001, 
-        0b00000  
-    };
-
-    elcd_create_char(0, warning_symbol);     // 0 - Warning
-    elcd_create_char(1, alarm_symbol);       //  1 - Danger
 }
 
 esp_err_t elcd_init(void)
@@ -93,17 +67,16 @@ esp_err_t elcd_init(void)
     usleep(200);
 
     // Inicialización de la pantalla
-    elcd_send_cmd(0x28); // Configuración de función
+    elcd_send_cmd(0x28);    // Configuración de función
     usleep(1000);
-    elcd_send_cmd(0x08); // Apagar la pantalla
+    elcd_send_cmd(0x08);    // Apagar la pantalla
     usleep(1000);
-    elcd_send_cmd(0x01); // Limpiar la pantalla
-    usleep(2000); // Espera por más de 1.53ms
-    elcd_send_cmd(0x06); // Configuración de modo de entrada
+    elcd_send_cmd(0x01);    // Limpiar la pantalla
+    usleep(2000);           // Espera por más de 1.53ms
+    elcd_send_cmd(0x06);    // Configuración de modo de entrada
     usleep(1000);
-    elcd_send_cmd(0x0C); // Encender la pantalla
+    elcd_send_cmd(0x0C);    // Encender la pantalla
     usleep(2000);
-    eelcd_init_custom_symbols();
     return ESP_OK;
 }
 

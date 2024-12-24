@@ -17,7 +17,7 @@ This module depends on the following components:
 
 - `elcd_send_cmd(char cmd)`: Sends a command to the LCD.
 - `elcd_send_data(char data)`: Sends data to the LCD.
-- `elcd_create_char(uint8_t location, uint8_t charmap[])`: Creates a custom character.
+- `elcd_create_symbol(uint8_t location, uint8_t charmap[])`: Creates a custom character.
 - `elcd_init()`: Initializes the LCD.
 - `elcd_set_pins(int SCL, int SDA)`: Sets the I2C pins.
 - `elcd_clear_all()`: Clears the entire display.

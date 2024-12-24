@@ -47,17 +47,16 @@ typedef struct {
 // Funciones del LCD
 void elcd_send_cmd(char cmd);
 void elcd_send_data(char data);
+void elcd_create_symbol(uint8_t location, uint8_t charmap[8]);
 esp_err_t elcd_init(void);
 void elcd_set_pins(int SCL, int SDA);
 void elcd_clear_all();
 void elcd_clear_row(uint8_t y);
 void elcd_goto_xy(uint8_t x, uint8_t y);
 void elcd_print_string_at(uint8_t x, uint8_t y, char *str);
-void elcd_create_char(uint8_t location, uint8_t charmap[]);
 void elcd_print_string_center(int y, char *str);
 void elcd_draw_symbol(uint8_t x, uint8_t y, uint8_t location);
 void elcd_add_draw_to_buffer(draw_handler draw);
 void elcd_trigger_draw();
 uint8_t decimal_to_bcd(uint8_t decimal);
-void eelcd_init_custom_symbols(void);
 uint8_t bcd_to_decimal(uint8_t bcd);
