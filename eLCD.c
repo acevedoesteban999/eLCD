@@ -56,14 +56,14 @@ esp_err_t elcd_init(void)
     if(err != ESP_OK)
         return err;
     // Inicialización de 4 bits
-    usleep(50000);  // Espera por más de 40ms
+    usleep(50000);          // Espera por más de 40ms
     elcd_send_cmd(0x30);
-    usleep(4500);   // Espera por más de 4.1ms
+    usleep(4500);           // Espera por más de 4.1ms
     elcd_send_cmd(0x30);
-    usleep(200);    // Espera por más de 100us
+    usleep(200);            // Espera por más de 100us
     elcd_send_cmd(0x30);
     usleep(200);
-    elcd_send_cmd(0x20);  // Modo de 4 bits
+    elcd_send_cmd(0x20);    // Modo de 4 bits
     usleep(200);
 
     // Inicialización de la pantalla
