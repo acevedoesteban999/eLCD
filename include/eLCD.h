@@ -21,6 +21,7 @@ extern const char*TAG_I2C;
 enum DRAW_TYPE{
     PRINT_STRING_AT,
     PRINT_STRING_CENTER,
+    PRINT_STRING_CENTER_C,
     DRAW_SYMBOL,
     CLEAR_ROW,
     CLEAR_AT,
@@ -55,6 +56,7 @@ void elcd_clear_row(uint8_t y);
 void elcd_goto_xy(uint8_t x, uint8_t y);
 void elcd_print_string_at(uint8_t x, uint8_t y, char *str);
 void elcd_print_string_center(int y, char *str);
+void elcd_print_string_center_c(int y, char *str, int c);
 void elcd_draw_symbol(uint8_t x, uint8_t y, uint8_t location);
 void elcd_add_to_buffer(elcd_handler draw);
 void elcd_check_trigger();

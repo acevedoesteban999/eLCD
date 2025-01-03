@@ -150,6 +150,13 @@ void elcd_print_string_center(int y,char * str) {
     elcd_print_string_at(x,y,str);
 }
 
+void elcd_print_string_center_c(int y,char * str,int c) {
+    elcd_clear_row(y);
+    size_t len = strlen(str);
+    int x = (MAX_COL - len - c)/2 ;
+    elcd_print_string_at(x,y,str);
+}
+
 void elcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
     elcd_goto_xy(x, y);
     elcd_send_data(location);
@@ -186,6 +193,9 @@ void _elcd__task_trigger(void* arg) {
                 break;
             case PRINT_STRING_CENTER:
                 elcd_print_string_center(ELCD_BUFFER_copy[i].y, ELCD_BUFFER_copy[i].str_buff);
+                break;
+            case PRINT_STRING_CENTER_C:
+                elcd_print_string_center_c(ELCD_BUFFER_copy[i].y, ELCD_BUFFER_copy[i].str_buff,ELCD_BUFFER_copy[i].location);
                 break;
             case DRAW_SYMBOL:
                 elcd_draw_symbol(ELCD_BUFFER_copy[i].x, ELCD_BUFFER_copy[i].y, ELCD_BUFFER_copy[i].location);
