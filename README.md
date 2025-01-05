@@ -26,8 +26,8 @@ This module depends on the following components:
 - `elcd_print_string_at(uint8_t x, uint8_t y, char * str)`: Prints a string at a specific position.
 - `elcd_print_string_center(int y, char * str)`: Prints a string centered on a specific row.
 - `elcd_draw_symbol(uint8_t x, uint8_t y, uint8_t location)`: Draws a custom symbol.
-- `elcd_add_draw_to_buffer(draw_handler draw)`: Adds a draw command to the buffer.
-- `elcd_trigger_draw()`: Triggers the drawing of buffered commands.
+- `elcd_add_to_buffer(elcd_handler draw)`: Adds a draw command to the buffer.
+- `elcd_force_trigger()`: Triggers the drawing of buffered commands.
 
 ## Example Usage
 

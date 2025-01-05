@@ -4,13 +4,13 @@ const char*TAG_LCD = "LCD";
 const char*TAG_I2C = "I2C";
 int I2C_SCL_PIN = 21;                 
 int I2C_SDA_PIN = 22;
-TaskHandle_t task_draw_handle = NULL;
+TaskHandle_t task_elcd_handle = NULL;
 
-draw_handler DRAW_BUFFER[MAX_DRAW_BUFFER];
-size_t draw_counter=0;
+elcd_handler ELCD_BUFFER[MAX_ELCD_BUFFER];
+size_t elcd_counter=0;
 
-draw_handler DRAW_BUFFER_copy[MAX_DRAW_BUFFER];
-size_t draw_counter_cpy=0;
+elcd_handler ELCD_BUFFER_copy[MAX_ELCD_BUFFER];
+size_t elcd_counter_cpy=0;
 
 void elcd_send_cmd(char cmd) {
     char data_u, data_l;
@@ -150,6 +150,13 @@ void elcd_print_string_center(int y,char * str) {
     elcd_print_string_at(x,y,str);
 }
 
+void elcd_print_string_center_c(int y,char * str,int c) {
+    elcd_clear_row(y);
+    size_t len = strlen(str);
+    int x = (MAX_COL - len - c)/2 ;
+    elcd_print_string_at(x,y,str);
+}
+
 void elcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
     elcd_goto_xy(x, y);
     elcd_send_data(location);
@@ -159,14 +166,14 @@ bool elcd_is_task_running(TaskHandle_t task_handle) {
     return (task_handle != NULL && eTaskGetState(task_handle) == eRunning);
 }
 
-void elcd_add_draw_to_buffer(draw_handler draw) {
-    if (draw_counter < MAX_DRAW_BUFFER) {
-        DRAW_BUFFER[draw_counter] = draw;
-        strcpy(DRAW_BUFFER[draw_counter].str_buff, (draw.str_ptr != NULL ? draw.str_ptr : draw.str_buff));
-        draw_counter++;
+void elcd_add_to_buffer(elcd_handler handler) {
+    if (elcd_counter < MAX_ELCD_BUFFER) {
+        ELCD_BUFFER[elcd_counter] = handler;
+        strcpy(ELCD_BUFFER[elcd_counter].str_buff, (handler.str_ptr != NULL ? handler.str_ptr : handler.str_buff));
+        elcd_counter++;
     } else {
-        elcd_trigger_draw();
-        elcd_add_draw_to_buffer(draw);
+        elcd_force_trigger();
+        elcd_add_to_buffer(handler);
     }
 }
 
@@ -178,23 +185,26 @@ void elcd_clear_at(uint8_t x , uint8_t y , uint8_t len){
     elcd_print_string_at(x,y,clear);
 }
 
-void _task_trigger_draw(void* arg) {
-    for (size_t i = 0; i < draw_counter_cpy; i++) {
-        switch (DRAW_BUFFER_copy[i].type) {
+void _elcd__task_trigger(void* arg) {
+    for (size_t i = 0; i < elcd_counter_cpy; i++) {
+        switch (ELCD_BUFFER_copy[i].type) {
             case PRINT_STRING_AT:
-                elcd_print_string_at(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].str_buff);
+                elcd_print_string_at(ELCD_BUFFER_copy[i].x, ELCD_BUFFER_copy[i].y, ELCD_BUFFER_copy[i].str_buff);
                 break;
             case PRINT_STRING_CENTER:
-                elcd_print_string_center(DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].str_buff);
+                elcd_print_string_center(ELCD_BUFFER_copy[i].y, ELCD_BUFFER_copy[i].str_buff);
+                break;
+            case PRINT_STRING_CENTER_C:
+                elcd_print_string_center_c(ELCD_BUFFER_copy[i].y, ELCD_BUFFER_copy[i].str_buff,ELCD_BUFFER_copy[i].location);
                 break;
             case DRAW_SYMBOL:
-                elcd_draw_symbol(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].location);
+                elcd_draw_symbol(ELCD_BUFFER_copy[i].x, ELCD_BUFFER_copy[i].y, ELCD_BUFFER_copy[i].location);
                 break;
             case CLEAR_ROW:
-                elcd_clear_row(DRAW_BUFFER_copy[i].y);
+                elcd_clear_row(ELCD_BUFFER_copy[i].y);
                 break;
             case CLEAR_AT:
-                elcd_clear_at(DRAW_BUFFER_copy[i].x, DRAW_BUFFER_copy[i].y, DRAW_BUFFER_copy[i].location);
+                elcd_clear_at(ELCD_BUFFER_copy[i].x, ELCD_BUFFER_copy[i].y, ELCD_BUFFER_copy[i].location);
                 break;
             default:
                 break;
@@ -203,19 +213,24 @@ void _task_trigger_draw(void* arg) {
     vTaskDelete(NULL);
 }
 
-void elcd_trigger_draw() {
-    if (draw_counter != 0) {
-        if (elcd_is_task_running(task_draw_handle)) {
-            while (elcd_is_task_running(task_draw_handle)) {
+void elcd_check_trigger(){
+    if (elcd_counter >= MAX_ELCD_BUFFER)
+        return elcd_force_trigger();
+}
+
+void elcd_force_trigger() {
+    if (elcd_counter != 0) {
+        if (elcd_is_task_running(task_elcd_handle)) {
+            while (elcd_is_task_running(task_elcd_handle)) {
                 vTaskDelay(1);
             }
         }
-        for (size_t i = 0; i < draw_counter; i++) {
-            DRAW_BUFFER_copy[i] = DRAW_BUFFER[i];
-            strcpy(DRAW_BUFFER_copy[i].str_buff, DRAW_BUFFER[i].str_buff);
+        for (size_t i = 0; i < elcd_counter; i++) {
+            ELCD_BUFFER_copy[i] = ELCD_BUFFER[i];
+            strcpy(ELCD_BUFFER_copy[i].str_buff, ELCD_BUFFER[i].str_buff);
         }
-        draw_counter_cpy = draw_counter;
-        draw_counter = 0;
-        xTaskCreatePinnedToCore(_task_trigger_draw, "xtask_lines", 5000, NULL, 20, &task_draw_handle, LCD_CORE);
+        elcd_counter_cpy = elcd_counter;
+        elcd_counter = 0;
+        xTaskCreatePinnedToCore(_elcd__task_trigger, "xtask_lines", 5000, NULL, 20, &task_elcd_handle, LCD_CORE);
     }
 }

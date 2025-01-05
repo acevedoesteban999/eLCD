@@ -13,7 +13,7 @@
 #define MAX_COL 20 
 #define LCD_CORE 1
 #define LCD_CLEAR_COMMAND 0x01
-#define MAX_DRAW_BUFFER 25
+#define MAX_ELCD_BUFFER 25
 
 extern const char*TAG_LCD;
 extern const char*TAG_I2C;
@@ -21,6 +21,7 @@ extern const char*TAG_I2C;
 enum DRAW_TYPE{
     PRINT_STRING_AT,
     PRINT_STRING_CENTER,
+    PRINT_STRING_CENTER_C,
     DRAW_SYMBOL,
     CLEAR_ROW,
     CLEAR_AT,
@@ -41,7 +42,7 @@ typedef struct {
     uint8_t x;
     uint8_t y;
     uint8_t location;
-} draw_handler;
+} elcd_handler;
 
 
 // Funciones del LCD
@@ -55,8 +56,10 @@ void elcd_clear_row(uint8_t y);
 void elcd_goto_xy(uint8_t x, uint8_t y);
 void elcd_print_string_at(uint8_t x, uint8_t y, char *str);
 void elcd_print_string_center(int y, char *str);
+void elcd_print_string_center_c(int y, char *str, int c);
 void elcd_draw_symbol(uint8_t x, uint8_t y, uint8_t location);
-void elcd_add_draw_to_buffer(draw_handler draw);
-void elcd_trigger_draw();
+void elcd_add_to_buffer(elcd_handler draw);
+void elcd_check_trigger();
+void elcd_force_trigger();
 uint8_t decimal_to_bcd(uint8_t decimal);
 uint8_t bcd_to_decimal(uint8_t bcd);
