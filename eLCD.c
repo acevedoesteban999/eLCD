@@ -1,9 +1,8 @@
 #include "eLCD.h"
 
-const char*TAG_LCD = "LCD";
-const char*TAG_I2C = "I2C";
-int I2C_SCL_PIN = 21;                 
-int I2C_SDA_PIN = 22;
+
+unsigned char ELCD_SLAVE_ADDR = ELCD_DEFAULT_SLAVE_ADDR;
+
 TaskHandle_t task_elcd_handle = NULL;
 
 elcd_handler ELCD_BUFFER[MAX_ELCD_BUFFER];
@@ -24,7 +23,7 @@ void elcd_send_cmd(char cmd) {
     data_t[2] = data_l | 0x0C;  // en=1, rs=0
     data_t[3] = data_l | 0x08;  // en=0, rs=0
 
-    ei2c_write(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4);
+    ei2c_write(ELCD_SLAVE_ADDR, data_t, 4);
 }
 
 void elcd_send_data(char data) {
@@ -39,7 +38,7 @@ void elcd_send_data(char data) {
     data_t[2] = data_l | 0x0D;  // en=1, rs=1
     data_t[3] = data_l | 0x09;  // en=0, rs=1
 
-    ei2c_write(I2C_PORT, SLAVE_ADDRESS_LCD, data_t, 4);
+    ei2c_write( ELCD_SLAVE_ADDR, data_t, 4);
 }
 
 void elcd_create_symbol(uint8_t location, uint8_t charmap[8]) {
@@ -50,11 +49,12 @@ void elcd_create_symbol(uint8_t location, uint8_t charmap[8]) {
     }
 }
 
-esp_err_t elcd_init(void)
+esp_err_t elcd_init()
 {
-    esp_err_t err = ei2c_master_init(I2C_SDA_PIN,I2C_SCL_PIN,I2C_PORT);
+    esp_err_t err = ei2c_master_init();
     if(err != ESP_OK)
         return err;
+
     // Inicialización de 4 bits
     usleep(50000);          // Espera por más de 40ms
     elcd_send_cmd(0x30);
@@ -77,13 +77,14 @@ esp_err_t elcd_init(void)
     usleep(1000);
     elcd_send_cmd(0x0C);    // Encender la pantalla
     usleep(2000);
+    
     return ESP_OK;
 }
 
-void elcd_set_pins(int SCL,int SDA){
-    I2C_SCL_PIN = SCL;
-    I2C_SDA_PIN = SDA;
+void elcd_set_slave(unsigned char slave_addr){
+    ELCD_SLAVE_ADDR = slave_addr;
 }
+
 
 void elcd_clear_all(){
     char clear[MAX_COL + 1];
@@ -140,7 +141,7 @@ void elcd_print_string_at(uint8_t x, uint8_t y, char * str) {
         buffer[index++] = data_l | 0x0D;  // en=1, rs=1
         buffer[index++] = data_l | 0x09;  // en=0, rs=1
     }
-    ei2c_write(I2C_PORT, SLAVE_ADDRESS_LCD, buffer, index);
+    ei2c_write( ELCD_SLAVE_ADDR, buffer, index);
 }
 
 void elcd_print_string_center(int y,char * str) {

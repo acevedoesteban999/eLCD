@@ -4,16 +4,14 @@
 #include <unistd.h>
 #include "string.h"
 #include "eI2C.h"
-
-#define I2C_PORT I2C_NUM_0              
-#define I2C_PORT I2C_NUM_0                 
-#define I2C_FREQ_HZ 400000              
-#define SLAVE_ADDRESS_LCD 0x27        
+               
+#define I2C_FREQ_HZ 400000          
 #define MAX_ROW 4
 #define MAX_COL 20 
 #define LCD_CORE 1
 #define LCD_CLEAR_COMMAND 0x01
 #define MAX_ELCD_BUFFER 25
+#define ELCD_DEFAULT_SLAVE_ADDR 0x27
 
 extern const char*TAG_LCD;
 extern const char*TAG_I2C;
@@ -44,13 +42,15 @@ typedef struct {
     uint8_t location;
 } elcd_handler;
 
+         
+extern unsigned char ELCD_SLAVE_ADDR;
 
 // Funciones del LCD
 void elcd_send_cmd(char cmd);
 void elcd_send_data(char data);
 void elcd_create_symbol(uint8_t location, uint8_t charmap[8]);
-esp_err_t elcd_init(void);
-void elcd_set_pins(int SCL, int SDA);
+esp_err_t elcd_init();
+void elcd_set_slave(unsigned char slave_addr);
 void elcd_clear_all();
 void elcd_clear_row(uint8_t y);
 void elcd_goto_xy(uint8_t x, uint8_t y);
