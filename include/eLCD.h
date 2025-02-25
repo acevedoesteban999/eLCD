@@ -6,12 +6,12 @@
 #include "eI2C.h"
                
 #define I2C_FREQ_HZ 400000          
-#define MAX_ROW 4
-#define MAX_COL 20 
 #define LCD_CORE 1
 #define LCD_CLEAR_COMMAND 0x01
 #define MAX_ELCD_BUFFER 25
 #define ELCD_DEFAULT_SLAVE_ADDR 0x27
+#define DEFAULT_MAX_ROW 4
+#define DEFAULT_MAX_COL 20
 
 extern const char*TAG_LCD;
 extern const char*TAG_I2C;
@@ -44,6 +44,9 @@ typedef struct {
 
          
 extern unsigned char ELCD_SLAVE_ADDR;
+extern int ELCD_MAX_ROW;
+extern int ELCD_MAX_COL;
+void elcd_set_max_row_col(int rows, int cols);
 
 // Funciones del LCD
 void elcd_send_cmd(char cmd);

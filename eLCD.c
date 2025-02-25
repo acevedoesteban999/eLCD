@@ -4,12 +4,18 @@
 unsigned char ELCD_SLAVE_ADDR = ELCD_DEFAULT_SLAVE_ADDR;
 
 TaskHandle_t task_elcd_handle = NULL;
-
+int ELCD_MAX_ROW = DEFAULT_MAX_ROW;
+int ELCD_MAX_COL = DEFAULT_MAX_COL;
 elcd_handler ELCD_BUFFER[MAX_ELCD_BUFFER];
 size_t elcd_counter=0;
 
 elcd_handler ELCD_BUFFER_copy[MAX_ELCD_BUFFER];
 size_t elcd_counter_cpy=0;
+
+void elcd_set_max_row_col(int rows, int cols){
+    ELCD_MAX_ROW = rows;
+    ELCD_MAX_COL = cols;
+}
 
 void elcd_send_cmd(char cmd) {
     char data_u, data_l;
@@ -87,27 +93,27 @@ void elcd_set_slave(unsigned char slave_addr){
 
 
 void elcd_clear_all(){
-    char clear[MAX_COL + 1];
-    for(unsigned i =0 ; i< MAX_COL;i++)
+    char clear[ELCD_MAX_COL + 1];
+    for(unsigned i =0 ; i< ELCD_MAX_COL;i++)
         clear[i] = ' ';
-    clear[MAX_COL] = '\0';
+    clear[ELCD_MAX_COL] = '\0';
     
-    for(unsigned i =0 ; i< MAX_ROW;i++)
+    for(unsigned i =0 ; i< ELCD_MAX_ROW;i++)
         elcd_print_string_at(0,i,clear);
 }
 
 void elcd_clear_row(uint8_t y){
-    char clear[MAX_COL + 1];
-    for(unsigned i =0 ; i< MAX_COL;i++)
+    char clear[ELCD_MAX_COL + 1];
+    for(unsigned i =0 ; i< ELCD_MAX_COL;i++)
         clear[i] = ' ';
-    clear[MAX_COL] = '\0';
+    clear[ELCD_MAX_COL] = '\0';
     
     elcd_print_string_at(0,y,clear);
 }
 
 void elcd_goto_xy(uint8_t x, uint8_t y) {
-    if (x >= MAX_COL) x = MAX_COL - 1; // Limitar x al máximo de columnas
-    if (y >= MAX_ROW) y = MAX_ROW - 1; // Limitar y al máximo de filas
+    if (x >= ELCD_MAX_COL) x = ELCD_MAX_COL - 1; // Limitar x al máximo de columnas
+    if (y >= ELCD_MAX_ROW) y = ELCD_MAX_ROW - 1; // Limitar y al máximo de filas
 
     uint8_t address;
     switch (y) {
@@ -128,9 +134,11 @@ void elcd_print_string_at(uint8_t x, uint8_t y, char * str) {
 
     size_t len = strlen(str);
 
-    if (x + len > MAX_COL) {
-        len = MAX_COL - x;
-    }
+    if (x > ELCD_MAX_COL)
+        x = x % ELCD_MAX_COL;
+    
+    if (x + len > ELCD_MAX_COL) 
+        len = ELCD_MAX_COL - x;
 
     for (unsigned i = 0; i < len; i++) {
         char data_u = (str[i] & 0xf0);
@@ -147,14 +155,14 @@ void elcd_print_string_at(uint8_t x, uint8_t y, char * str) {
 void elcd_print_string_center(int y,char * str) {
     elcd_clear_row(y);
     size_t len = strlen(str);
-    int x = (MAX_COL - len)/2;
+    int x = (ELCD_MAX_COL - len)/2;
     elcd_print_string_at(x,y,str);
 }
 
 void elcd_print_string_center_c(int y,char * str,int c) {
     elcd_clear_row(y);
     size_t len = strlen(str);
-    int x = (MAX_COL - len - c)/2 ;
+    int x = (ELCD_MAX_COL - len - c)/2 ;
     elcd_print_string_at(x,y,str);
 }
 
