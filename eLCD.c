@@ -2,6 +2,7 @@
 
 
 unsigned char ELCD_SLAVE_ADDR = ELCD_DEFAULT_SLAVE_ADDR;
+int error_elcd = -1;
 
 TaskHandle_t task_elcd_handle = NULL;
 int ELCD_MAX_ROW = DEFAULT_MAX_ROW;
@@ -11,6 +12,10 @@ size_t elcd_counter=0;
 
 elcd_handler ELCD_BUFFER_copy[MAX_ELCD_BUFFER];
 size_t elcd_counter_cpy=0;
+
+bool elcd_has_error(){
+    return error_elcd != 0;
+}
 
 void elcd_set_max_row_col(int rows, int cols){
     ELCD_MAX_ROW = rows;
@@ -58,9 +63,16 @@ void elcd_create_symbol(uint8_t location, uint8_t charmap[8]) {
 esp_err_t elcd_init()
 {
     esp_err_t err = ei2c_master_init();
-    if(err != ESP_OK)
+    if(err != ESP_OK){
+        error_elcd = 1;
         return err;
-
+    }
+    u_char addr =(ELCD_SLAVE_ADDR << 1);
+    err = ei2c_write(ELCD_SLAVE_ADDR, &addr , 1);
+    if (err != ESP_OK){
+        error_elcd = 2;
+        return err;
+    }
     // Inicialización de 4 bits
     usleep(50000);          // Espera por más de 40ms
     elcd_send_cmd(0x30);
@@ -83,7 +95,7 @@ esp_err_t elcd_init()
     usleep(1000);
     elcd_send_cmd(0x0C);    // Encender la pantalla
     usleep(2000);
-    
+    error_elcd = 0;
     return ESP_OK;
 }
 
@@ -93,6 +105,8 @@ void elcd_set_slave(unsigned char slave_addr){
 
 
 void elcd_clear_all(){
+    if(elcd_has_error())
+        return;
     char clear[ELCD_MAX_COL + 1];
     for(unsigned i =0 ; i< ELCD_MAX_COL;i++)
         clear[i] = ' ';
@@ -103,6 +117,8 @@ void elcd_clear_all(){
 }
 
 void elcd_clear_row(uint8_t y){
+    if(elcd_has_error())
+        return;
     char clear[ELCD_MAX_COL + 1];
     for(unsigned i =0 ; i< ELCD_MAX_COL;i++)
         clear[i] = ' ';
@@ -112,6 +128,8 @@ void elcd_clear_row(uint8_t y){
 }
 
 void elcd_goto_xy(uint8_t x, uint8_t y) {
+    if(elcd_has_error())
+        return;
     if (x >= ELCD_MAX_COL) x = ELCD_MAX_COL - 1; // Limitar x al máximo de columnas
     if (y >= ELCD_MAX_ROW) y = ELCD_MAX_ROW - 1; // Limitar y al máximo de filas
 
@@ -127,6 +145,8 @@ void elcd_goto_xy(uint8_t x, uint8_t y) {
 }
 
 void elcd_print_string_at(uint8_t x, uint8_t y, char * str) {
+    if(elcd_has_error())
+        return;
     elcd_goto_xy(x, y); 
 
     uint8_t buffer[100]; 
@@ -153,6 +173,8 @@ void elcd_print_string_at(uint8_t x, uint8_t y, char * str) {
 }
 
 void elcd_print_string_center(int y,char * str) {
+    if(elcd_has_error())
+        return;
     elcd_clear_row(y);
     size_t len = strlen(str);
     int x = (ELCD_MAX_COL - len)/2;
@@ -160,6 +182,8 @@ void elcd_print_string_center(int y,char * str) {
 }
 
 void elcd_print_string_center_offset(int y,char * str,int offset) {
+    if(elcd_has_error())
+        return;
     elcd_clear_row(y);
     size_t len = strlen(str);
     int x = (ELCD_MAX_COL - len + offset)/2 ;
@@ -167,6 +191,8 @@ void elcd_print_string_center_offset(int y,char * str,int offset) {
 }
 
 void elcd_draw_symbol(uint8_t x,uint8_t y, uint8_t location) {
+    if(elcd_has_error())
+        return;
     elcd_goto_xy(x, y);
     elcd_send_data(location);
 }
@@ -176,6 +202,8 @@ bool elcd_is_task_running(TaskHandle_t task_handle) {
 }
 
 void elcd_add_to_buffer(elcd_handler handler) {
+    if(elcd_has_error())
+        return;
     if (elcd_counter < MAX_ELCD_BUFFER) {
         ELCD_BUFFER[elcd_counter] = handler;
         strcpy(ELCD_BUFFER[elcd_counter].str_buff, (handler.str_ptr != NULL ? handler.str_ptr : handler.str_buff));
@@ -187,6 +215,8 @@ void elcd_add_to_buffer(elcd_handler handler) {
 }
 
 void elcd_clear_at(uint8_t x , uint8_t y , uint8_t len){
+    if(elcd_has_error())
+        return;
     char clear[len + 1];
     for(unsigned i =0 ; i< len;i++)
         clear[i] = ' ';
@@ -195,6 +225,8 @@ void elcd_clear_at(uint8_t x , uint8_t y , uint8_t len){
 }
 
 void _elcd__task_trigger(void* arg) {
+    if(elcd_has_error())
+        vTaskDelete(NULL);
     for (size_t i = 0; i < elcd_counter_cpy; i++) {
         switch (ELCD_BUFFER_copy[i].type) {
             case PRINT_STRING_AT:
@@ -223,11 +255,15 @@ void _elcd__task_trigger(void* arg) {
 }
 
 void elcd_check_trigger(){
+    if(elcd_has_error())
+        return;
     if (elcd_counter >= MAX_ELCD_BUFFER)
         return elcd_force_trigger();
 }
 
 void elcd_force_trigger() {
+    if(elcd_has_error())
+        return;
     if (elcd_counter != 0) {
         if (elcd_is_task_running(task_elcd_handle)) {
             while (elcd_is_task_running(task_elcd_handle)) {
